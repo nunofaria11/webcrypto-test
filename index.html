@@ -69,6 +69,10 @@
       algorithmIdentifier = {
         // Algorithm name
         name: "RSA-OAEP",
+        // Edge compatibility (http://stackoverflow.com/a/33176125/691916)
+        hash: {
+          name: hashName
+        },
         // iv: Is initialization vector. It must be 16 bytes
         iv: crypto.getRandomValues(new Uint8Array(16))
       };
