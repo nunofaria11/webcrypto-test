@@ -89,7 +89,7 @@
   encryptBtn.onclick = function(evt) {
     encryptData(raw.value).then(
       function(encData) {
-        encrypted.value = encData;
+        encrypted.value = encData.toString();
         decrypted.value = '';
       },
       function(error) {
