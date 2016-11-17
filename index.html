@@ -119,11 +119,7 @@
   encryptBtn.onclick = function(evt) {
     encryptData(raw.value).then(
       function(encData) {
-        encrypted.value = encData.reduce(
-          function(a, b) {
-            return a + ',' + b;
-          }
-        );
+        encrypted.value = join(encData, ',');
         decrypted.value = '';
       },
       function(error) {
@@ -206,6 +202,18 @@
     }
 
     return str;
+  }
+
+  function join(array, separator) {
+    var i, res;
+    res = '';
+    for (i = 0; i < array.length; i++) {
+      res += array[i];
+      if (i + 1 < array.length) {
+        res += separator;
+      }
+    }
+    return res;
   }
 
   function addMessage(message) {
