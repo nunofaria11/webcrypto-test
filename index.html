@@ -126,7 +126,9 @@
         function(result) {
           resolve(convertArrayBufferViewtoString(new Uint8Array(result)));
         },
-        reject);
+        function(error) {
+          reject(error);
+        });
     });
   }
 
