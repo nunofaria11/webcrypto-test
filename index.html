@@ -73,7 +73,7 @@
         iv: crypto.getRandomValues(new Uint8Array(16))
       };
 
-      var asymmetricEncAlgorithm = {
+      asymmetricEncAlgorithm = {
         name: "RSA-OAEP",
         modulusLength: 2048,
         publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
