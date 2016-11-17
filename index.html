@@ -73,7 +73,7 @@
         iv: crypto.getRandomValues(new Uint8Array(16))
       };
 
-      asymmetricEncAlgorithm = {
+      var asymmetricEncAlgorithm = {
         name: "RSA-OAEP",
         modulusLength: 2048,
         publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
@@ -93,7 +93,7 @@
           private_key_object = key.privateKey;
           public_key_object = key.publicKey;
           addMessage('Keys generated.');
-          console.log('Keys generated.', key);
+          console.log('Keys generated.', key, asymmetricEncAlgorithm);
 
           raw.disabled = false;
           encryptBtn.disabled = false;
