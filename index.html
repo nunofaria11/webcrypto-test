@@ -8,6 +8,12 @@
 <body>
   <div id="content">
     <div>
+      <form id="hashForm" action="">
+        <input id="sha1" type="radio" name="hashRadio" value="SHA-1">
+        <label for="sha1">SHA-1</label>
+        <input id="sha256" type="radio" name="hashRadio" value="SHA-256" checked="checked">
+        <label for="sha256">SHA-1</label>
+      </form>
       <textarea id="raw" placeholder="Text to encrypt..."></textarea>
       <br>
       <button id="encryptBtn">Encrypt</button>
@@ -32,59 +38,79 @@
   var encryptBtn = document.getElementById('encryptBtn');
   var decryptBtn = document.getElementById('decryptBtn');
 
-  raw.disabled = true;
-  encryptBtn.disabled = true;
-  decryptBtn.disabled = true;
-
-  // https://www.w3.org/TR/WebCryptoAPI/#subtlecrypto-interface
-  if (crypto.subtle) {
-    var public_key_object, private_key_object, promise_key;
-
-    public_key_object = null;
-    private_key_object = null;
-
-    var algorithmIdentifier = {
-      // Algorithm name
-      name: "RSA-OAEP",
-      // iv: Is initialization vector. It must be 16 bytes
-      iv: crypto.getRandomValues(new Uint8Array(16))
+  var hashName;
+  var rad = document.getElementById('hashForm').hashRadio;
+  for (var i = 0; i < rad.length; i++) {
+    rad[i].onclick = function() {
+      addMessage('Switched to hash: ' + this.value);
+      hashName = this.value;
+      setupKeys();
     };
-
-    var asymmetricEncAlgorithm = {
-      name: "RSA-OAEP",
-      modulusLength: 2048,
-      publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
-      hash: {
-        name: "SHA-256"
-      }
-    };
-
-    promise_key = crypto.subtle.generateKey(
-      asymmetricEncAlgorithm, // algorithm
-      false, // extractable (https://www.w3.org/TR/WebCryptoAPI/#dfn-CryptoKey-slot-extractable)
-      ["encrypt", "decrypt"] // usages
-    );
-
-    promise_key.then(
-      function(key) {
-        private_key_object = key.privateKey;
-        public_key_object = key.publicKey;
-        addMessage('Keys generated.');
-        console.log('Keys generated.', key);
-
-        raw.disabled = false;
-        encryptBtn.disabled = false;
-        decryptBtn.disabled = false;
-      },
-      function(err) {
-        console.error('An error occurred:', err || '?');
-        addMessage('Error ' + (err || '?'));
-      }
-    );
-
-  } else {
-    addMessage('crypto.subtle is not supported');
+    if (rad[i].checked) {
+      hashName = rad[i].value;
+    }
   }
+
+  var public_key_object, private_key_object, algorithmIdentifier;
+
+  function setupKeys() {
+
+    raw.disabled = true;
+    encryptBtn.disabled = true;
+    decryptBtn.disabled = true;
+
+
+    // https://www.w3.org/TR/WebCryptoAPI/#subtlecrypto-interface
+    if (crypto.subtle) {
+
+      public_key_object = null;
+      private_key_object = null;
+
+      algorithmIdentifier = {
+        // Algorithm name
+        name: "RSA-OAEP",
+        // iv: Is initialization vector. It must be 16 bytes
+        iv: crypto.getRandomValues(new Uint8Array(16))
+      };
+
+      var asymmetricEncAlgorithm = {
+        name: "RSA-OAEP",
+        modulusLength: 2048,
+        publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
+        hash: {
+          name: hashName // SHA-1, SHA-256
+        }
+      };
+
+      var promise_key = crypto.subtle.generateKey(
+        asymmetricEncAlgorithm, // algorithm
+        false, // extractable (https://www.w3.org/TR/WebCryptoAPI/#dfn-CryptoKey-slot-extractable)
+        ["encrypt", "decrypt"] // usages
+      );
+
+      promise_key.then(
+        function(key) {
+          private_key_object = key.privateKey;
+          public_key_object = key.publicKey;
+          addMessage('Keys generated.');
+          console.log('Keys generated.', key);
+
+          raw.disabled = false;
+          encryptBtn.disabled = false;
+          decryptBtn.disabled = false;
+        },
+        function(err) {
+          console.error('An error occurred:', err || '?');
+          addMessage('Error ' + (err || '?'));
+        }
+      );
+
+    } else {
+      addMessage('crypto.subtle is not supported');
+    }
+  }
+
+  setupKeys();
 
   encryptBtn.onclick = function(evt) {
     encryptData(raw.value).then(
