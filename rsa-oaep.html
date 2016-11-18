@@ -1,0 +1,231 @@
+<!doctype html>
+<html>
+
+<head>
+  <title>Crypto test - RSA-OAEP</title>
+  <script src="promise.min.js"></script>
+  <script src="crypto.js"></script>
+</head>
+
+<body>
+  <title>RSA-OAEP / SHA-256</title>
+  <div id="contentA" border="2px">
+    A outbox:
+    <br>
+    <textarea id="decryptedOutboxA" placeholder="A-Text to encrypt..."></textarea>
+    <br>
+    <button id="encryptA">Encrypt</button>
+    <br>
+    <br> A-Encryped outbox:
+    <br>
+    <textarea id="encryptedOutboxA" disabled="true"></textarea>
+    <br>
+    <button id="sendA">Send to B</button>
+    <br>
+    <br>
+    <!-- Received from B -->
+    A inbox:
+    <br>
+    <textarea id="encryptedInboxA" disabled="true"></textarea>
+    <br>
+    <button id="decryptA">Decrypt A</button>
+    <br>
+    <br> A-Decrypted inbox:
+    <br>
+    <textarea id="decryptedInboxA" disabled="true"></textarea>
+  </div>
+  <hr>
+  <div id="contentB" border="2px">
+    B outbox:
+    <br>
+    <textarea id="decryptedOutboxB" placeholder="B-Text to encrypt..."></textarea>
+    <br>
+    <button id="encryptB">Encrypt</button>
+    <br>
+    <br> B-Encrypted outbox:
+    <br>
+    <textarea id="encryptedOutboxB" disabled="true"></textarea>
+    <br>
+    <button id="sendB">Send to A</button>
+    <br>
+    <br>
+    <!-- Received from B -->
+    B inbox:
+    <br>
+    <textarea id="encryptedInboxB" disabled="true"></textarea>
+    <br>
+    <button id="decryptB">Decrypt B</button>
+    <br>
+    <br> B-Decrypted inbox:
+    <br>
+    <textarea id="decryptedInboxB" disabled="true"></textarea>
+  </div>
+  <ul id="messages"></ul>
+  <script type="text/javascript">
+  var algorithm = 'RSA-OAEP';
+  var hash = 'SHA-256';
+  var cryptoA = new Crypto();
+  var cryptoB = new Crypto();
+
+  var partyA = {
+    desig: 'A',
+    decryptedOutbox: document.getElementById('decryptedOutboxA'),
+    encryptedOutbox: document.getElementById('encryptedOutboxA'),
+    encryptedInbox: document.getElementById('encryptedInboxA'),
+    decryptedInbox: document.getElementById('decryptedInboxA'),
+    encrypt: document.getElementById('encryptA'),
+    decrypt: document.getElementById('decryptA'),
+    send: document.getElementById('sendA'),
+    crypto: cryptoA
+  };
+
+  var partyB = {
+    desig: 'B',
+    decryptedOutbox: document.getElementById('decryptedOutboxB'),
+    encryptedOutbox: document.getElementById('encryptedOutboxB'),
+    encryptedInbox: document.getElementById('encryptedInboxB'),
+    decryptedInbox: document.getElementById('decryptedInboxB'),
+    encrypt: document.getElementById('encryptB'),
+    decrypt: document.getElementById('decryptB'),
+    send: document.getElementById('sendB'),
+    crypto: cryptoB
+  };
+
+  setUpEvents([partyA, partyB]);
+
+  // Set all controls disabled=true
+  disableControls(true);
+
+  // Setup
+  cryptoA.init(algorithm, hash).then(
+    // Success
+    function(pubA) {
+      console.log('A-init.', pubA);
+      cryptoB.init(algorithm, hash).then(
+        // Success
+        function(pubB) {
+          console.log('B-init.', pubB);
+          // Public key exchange
+          cryptoA.setExternalPublicKey(pubB).then(
+            function(pk) {
+              console.log('A successfully imported public-key from B', pk);
+            },
+            function(e) {
+              console.error('A - Error importing public-key prom B', e || '?');
+            }
+          );
+          cryptoB.setExternalPublicKey(pubA).then(
+            function(pk) {
+              console.log('B successfully imported public-key from A', pk);
+            },
+            function(e) {
+              console.error('B - Error importing public-key prom A', e || '?');
+            }
+          );
+          // Set all controls disabled=false
+          disableControls(false);
+        },
+        // Erro
+        onInitError.bind(this, 'B')
+      )
+    },
+    // Error
+    onInitError.bind(this, 'A')
+  );
+
+  // Set behavior
+
+  function setUpEvents(parties) {
+    var i;
+    for (i = 0; i < parties.length; i++) {
+      parties[i].encrypt.onclick = encryptMessage.bind(this, parties[i]);
+      parties[i].decrypt.onclick = decryptMessage.bind(this, parties[i]);
+    }
+    parties[0].send.onclick = sendMessage.bind(this, parties[0], parties[1]);
+    parties[1].send.onclick = sendMessage.bind(this, parties[1], parties[0]);
+  }
+
+  function encryptMessage(party, evt) {
+    party.encryptedOutbox.value = '';
+    party.crypto.encrypt(party.decryptedOutbox.value).then(
+      function(encData) {
+        party.encryptedOutbox.value = join(encData, ',');
+      },
+      function(error) {
+        addPartyMessage(party, 'Error encrypting data.');
+        console.error('Error encrypting data.', [party, error]);
+      }
+    );
+  }
+
+  function sendMessage(fromParty, toParty, evt) {
+    toParty.decryptedInbox.value = '';
+    toParty.encryptedInbox.value = fromParty.encryptedOutbox.value;
+  }
+
+  function decryptMessage(party, evt) {
+    var valueToDecrypt = convertTextareaValueToArrayBufferView(party.encryptedInbox.value);
+    party.decryptedInbox.value = '';
+    party.crypto.decrypt(valueToDecrypt).then(
+      function(decData) {
+        party.decryptedInbox.value = decData;
+      },
+      function(error) {
+        addPartyMessage(party, 'Error decrypting data.');
+        console.error('Error decrypting data.', [party, error]);
+      }
+    );
+  }
+
+  // Util functions
+  function disableControls(disabled) {
+    var controls, i;
+    controls = ['decryptedOutbox', 'encrypt', 'send', 'decrypt']; // fill controls here
+    for (i = 0; i < controls.length; i++) {
+      partyA[controls[i]].disabled = disabled;
+      partyB[controls[i]].disabled = disabled;
+    }
+  }
+
+  function onInitError(party, err) {
+    addMessage('Error occurred initializing ' + party + '-party.');
+    console.log('Error occurred initializing ' + party + '-party.', err || '?');
+    // Set all controls disabled=true
+    disableControls(true);
+  }
+
+  function addPartyMessage(party, message) {
+    addMessage(party.desig + '-party: ' + message);
+  }
+
+  function addMessage(message) {
+    var messages = document.getElementById('messages');
+    var node = document.createElement('li');
+    node.appendChild(document.createTextNode(message));
+    messages.appendChild(node);
+  }
+
+  function join(array, separator) {
+    var i, res;
+    res = '';
+    for (i = 0; i < array.length; i++) {
+      res += array[i];
+      if (i + 1 < array.length) {
+        res += separator;
+      }
+    }
+    return res;
+  }
+
+  function convertTextareaValueToArrayBufferView(value) {
+    var splits = value.split(',');
+    var bytes = new Uint8Array(splits.length);
+    for (var iii = 0; iii < splits.length; iii++) {
+      bytes[iii] = parseInt(splits[iii]);
+    }
+    return bytes;
+  }
+  </script>
+</body>
+
+</html>
