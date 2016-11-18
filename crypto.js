@@ -59,14 +59,12 @@
 
             crypto.subtle.exportKey('jwk', k.publicKey).then(
               function(jwk) {
-                resolve(jwk)
+                resolve(jwk);
               },
               function(error) {
-                reject(error)
+                reject(error);
               });
 
-            // Resolve with public key only
-            //resolve(k.publicKey);
           }.bind(this),
           function(error) {
             reject(error)
@@ -144,7 +142,7 @@
       this.algorithmIdentifier = {
         name: algorithm, // Algorithm name
         hash: {
-          name: hash // Edge compatibility (http://stackoverflow.com/a/33176125/691916)
+          name: hash // http://stackoverflow.com/a/33176125/691916
         },
         // iv: Is initialization vector. It must be 16 bytes
         iv: crypto.getRandomValues(new Uint8Array(16))
