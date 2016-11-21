@@ -99,6 +99,8 @@
 
   setUpEvents([partyA, partyB]);
 
+  resetValues();
+
   // Set all controls disabled=true
   disableControls(true);
 
@@ -209,6 +211,16 @@
       partyB[controls[i]].disabled = disabled;
     }
   }
+
+  function resetValues() {
+    var controls, i;
+    controls = ['decryptedOutbox', 'decryptedInbox', 'encryptedOutbox', 'encryptedInbox', 'encryptedInboxIv', 'encryptedOutboxIv']; // fill controls here
+    for (i = 0; i < controls.length; i++) {
+      partyA[controls[i]].value = '';
+      partyB[controls[i]].value = '';
+    }
+  }
+
 
   function onInitError(party, err) {
     addMessage('Error occurred initializing ' + party + '-party.');
