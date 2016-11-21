@@ -2,13 +2,13 @@
 <html>
 
 <head>
-  <title>Crypto test - Elliptic Curve Diffie-Hellman / AES-CBC</title>
+  <title>(Eavesdrop / Passive  MITM) Crypto test - Elliptic Curve Diffie-Hellman / AES-CBC</title>
   <script src="../promise.min.js"></script>
   <script src="crypto-ecdh.js"></script>
 </head>
 
 <body>
-  <h1>Elliptic Curve Diffie-Hellman / AES-CBC</h1>
+  <h1>(Eavesdrop / Passive MITM) Elliptic Curve Diffie-Hellman / AES-CBC</h1>
   <div id="contentA" border="2px">
     A outbox:
     <br>
@@ -66,8 +66,18 @@
   </div>
   <ul id="messages"></ul>
   <script type="text/javascript">
-  var cryptoA = new ECDHCrypto();
-  var cryptoB = new ECDHCrypto();
+  var cryptoA = new ECDHCrypto('A');
+  var cryptoB = new ECDHCrypto('B');
+  var eavesdroper = {
+    A: {
+      desig: 'A eve',
+      crypto: new ECDHCrypto('A eavesdrop')
+    },
+    B: {
+      desig: 'B eve',
+      crypto: new ECDHCrypto('B eavesdrop')
+    }
+  };
 
   var partyA = {
     desig: 'A',
@@ -80,7 +90,8 @@
     encrypt: document.getElementById('encryptA'),
     decrypt: document.getElementById('decryptA'),
     send: document.getElementById('sendA'),
-    crypto: cryptoA
+    crypto: cryptoA,
+    eve: eavesdroper.A
   };
 
   var partyB = {
@@ -94,7 +105,8 @@
     encrypt: document.getElementById('encryptB'),
     decrypt: document.getElementById('decryptB'),
     send: document.getElementById('sendB'),
-    crypto: cryptoB
+    crypto: cryptoB,
+    eve: eavesdroper.B
   };
 
   setUpEvents([partyA, partyB]);
@@ -104,28 +116,35 @@
   // Set all controls disabled=true
   disableControls(true);
 
-  // Setup (key exchange)
-  function exchange(a, b) {
+  function exchange(a, b, eve) {
     var initA = a.init();
     var initB = b.init();
-    return Promise.all([initA, initB]).then(function(pubs) {
+    var initEveA = eve.A.crypto.init();
+    var initEveB = eve.B.crypto.init();
+    return Promise.all([initA, initB, initEveA, initEveB]).then(function(pubs) {
       var pubA = pubs[0];
       var pubB = pubs[1];
+      var pubEveA = pubs[0];
+      var pubEveB = pubs[1];
       var promiseA = a.deriveSharedSecret(pubB);
       var promiseB = b.deriveSharedSecret(pubA);
-      return Promise.all([promiseA, promiseB]);
+      // eve intercepts public keys
+      var promiseEveA = eve.A.crypto.deriveSharedSecret(pubB);
+      var promiseEveB = eve.B.crypto.deriveSharedSecret(pubA);
+      return Promise.all([promiseA, promiseB, promiseEveA, promiseEveB]);
     });
   }
 
-  exchange(cryptoA, cryptoB).then(
+  // Setup (key exchange) with MIDDLE MAN!!!
+  exchange(cryptoA, cryptoB, eavesdroper).then(
     function(secretKeys) {
       console.log('Secret keys:', secretKeys);
       disableControls(false);
     }
   );
 
-  // Set behavior
 
+  // Set behavior
   function setUpEvents(parties) {
     var i;
     for (i = 0; i < parties.length; i++) {
@@ -149,6 +168,17 @@
         console.error('Error encrypting data.', [party, error]);
       }
     );
+    party.eve.crypto.encrypt(party.decryptedOutbox.value).then(
+      function(encData) {
+        party.eve.sendData = encData;
+        party.eve.encryptedData = join(encData.data, ',');
+        party.eve.encryptedIv = join(encData.iv, ',');
+      },
+      function(error) {
+        addPartyMessage(party, 'Error encrypting data.');
+        console.error('Error encrypting data.', [party, error]);
+      }
+    );
   }
 
   function sendMessage(fromParty, toParty, evt) {
@@ -161,15 +191,30 @@
   function decryptMessage(party, evt) {
     var valueToDecrypt = convertTextareaValueToArrayBufferView(party.encryptedInbox.value);
     party.decryptedInbox.value = '';
-    party.crypto.decrypt(valueToDecrypt, party.receivedData.iv).then(
+    var decryptPromiseReal = party.crypto.decrypt(valueToDecrypt, party.receivedData.iv).then(
       function(decData) {
         party.decryptedInbox.value = decData;
+        return decData;
       },
       function(error) {
         addPartyMessage(party, 'Error decrypting data.');
         console.error('Error decrypting data.', [party, error]);
       }
     );
+    var decryptPromiseEve =party.eve.crypto.decrypt(valueToDecrypt, party.receivedData.iv).then(
+      function(decData) {
+        party.eve.decryptedData = decData;
+        return decData;
+      },
+      function(error) {
+        addPartyMessage(party.eve, 'Error decrypting data.');
+        console.error('EVE decryption failed.', error);
+      }
+    );
+
+    Promise.all([decryptPromiseReal, decryptPromiseEve]).then(function (data){
+      console.log('Data %s === %s (%s)', data[0], data[1], (data[0]===data[1]));
+    });
   }
 
   // Util functions
