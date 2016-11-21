@@ -170,9 +170,8 @@
     party.crypto.encrypt(party.decryptedOutbox.value).then(
       function(encData) {
         party.sendData = encData;
-        //party.encryptedOutbox.value = join(encData, ',');
-        party.encryptedOutbox.value = btoa(party.sendData.data);        
-        party.encryptedOutboxIv.value = party.sendData.iv;
+        party.encryptedOutbox.value = join(encData.data, ',');        
+        party.encryptedOutboxIv.value = join(encData.iv, ',');        
       },
       function(error) {
         addPartyMessage(party, 'Error encrypting data.');
@@ -184,12 +183,12 @@
   function sendMessage(fromParty, toParty, evt) {
     toParty.decryptedInbox.value = '';
     toParty.encryptedInbox.value = fromParty.encryptedOutbox.value;
-    toParty.encryptedInboxIv.value = fromParty.sendData.iv;
+    toParty.encryptedInboxIv.value = fromParty.encryptedOutboxIv.value;
     toParty.receivedData = fromParty.sendData;
   }
 
   function decryptMessage(party, evt) {
-    var valueToDecrypt = convertTextareaValueToArrayBufferView(atob(party.encryptedInbox.value));
+    var valueToDecrypt = convertTextareaValueToArrayBufferView(party.encryptedInbox.value);
     party.decryptedInbox.value = '';
     party.crypto.decrypt(valueToDecrypt, party.receivedData.iv).then(
       function(decData) {
