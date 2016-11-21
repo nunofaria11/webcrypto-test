@@ -84,28 +84,25 @@
         crypto.subtle.importKey(
           'jwk',
           publicKeyData,
-          this.generateKeysAlgorithm, //these are the algorithm options
-          false, //whether the key is extractable (i.e. can be used in exportKey)
-          [] //"deriveKey" and/or "deriveBits" for private keys only (just put an empty list if importing a public key)
+          this.generateKeysAlgorithm,
+          false, []
         ).then(
 
           function(publicKey) {
 
             crypto.subtle.deriveKey({
                   name: this.generateKeysAlgorithm.name,
-                  namedCurve: this.generateKeysAlgorithm.namedCurve, //can be "P-256", "P-384", or "P-521"
-                  public: publicKey, //an ECDH public key from generateKey or importKey
+                  namedCurve: this.generateKeysAlgorithm.namedCurve,
+                  public: publicKey,
                 },
-                this.privateKey, //your ECDH private key from generateKey or importKey
-                // Algorithm to use after key is derived
+                this.privateKey,
                 this.encryptAlgorithmIdentifier,
-                true, //whether the derived key is extractable (i.e. can be used in exportKey)
-                ["encrypt", "decrypt"] //limited to the options in that algorithm's importKey
+                true, ["encrypt", "decrypt"]
               )
               .then(
 
                 function(sharedSecretKey) {
-                  this.sharedSecretKey = sharedSecretKey;                  
+                  this.sharedSecretKey = sharedSecretKey;
                   resolve(sharedSecretKey);
                 }.bind(this),
 
@@ -159,6 +156,7 @@
           name: this.encryptAlgorithmIdentifier.name,
           iv: convertStringToArrayBufferView(iv)
         },
+        // Use shared secret to decrypt
         this.sharedSecretKey,
         data
       ).then(
