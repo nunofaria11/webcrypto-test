@@ -2,13 +2,13 @@
 <html>
 
 <head>
-  <title>Crypto test - Elliptic Curve Diffie-Hellman / AES-CBC</title>
+  <title>(Active MITM) Crypto test - Elliptic Curve Diffie-Hellman / AES-CBC</title>
   <script src="../promise.min.js"></script>
   <script src="crypto-ecdh.js"></script>
 </head>
 
 <body>
-  <h1>Elliptic Curve Diffie-Hellman / AES-CBC</h1>
+  <h1>(Active MITM) Elliptic Curve Diffie-Hellman / AES-CBC</h1>
   <div id="contentA" border="2px">
     A outbox:
     <br>
@@ -66,8 +66,18 @@
   </div>
   <ul id="messages"></ul>
   <script type="text/javascript">
-  var cryptoA = new ECDHCrypto();
-  var cryptoB = new ECDHCrypto();
+  var cryptoA = new ECDHCrypto('A');
+  var cryptoB = new ECDHCrypto('B');
+  var middleMan = {
+    A: {
+      desig: 'A',
+      crypto: new ECDHCrypto('A middle man')
+    },
+    B: {
+      desig: 'B',
+      crypto: new ECDHCrypto('B middle man')
+    }
+  };
 
   var partyA = {
     desig: 'A',
@@ -80,7 +90,8 @@
     encrypt: document.getElementById('encryptA'),
     decrypt: document.getElementById('decryptA'),
     send: document.getElementById('sendA'),
-    crypto: cryptoA
+    crypto: cryptoA,
+    middleMan: middleMan.B.crypto
   };
 
   var partyB = {
@@ -94,7 +105,8 @@
     encrypt: document.getElementById('encryptB'),
     decrypt: document.getElementById('decryptB'),
     send: document.getElementById('sendB'),
-    crypto: cryptoB
+    crypto: cryptoB,
+    middleMan: middleMan.A.crypto
   };
 
   setUpEvents([partyA, partyB]);
@@ -104,7 +116,6 @@
   // Set all controls disabled=true
   disableControls(true);
 
-  // Setup (key exchange)
   function exchange(a, b) {
     var initA = a.init();
     var initB = b.init();
@@ -117,23 +128,34 @@
     });
   }
 
-  exchange(cryptoA, cryptoB).then(
-    function(secretKeys) {
-      console.log('Secret keys:', secretKeys);
-      disableControls(false);
-    }
-  );
+  // Setup (key exchange) with MIDDLE MAN!!!
+  exchange(cryptoA, middleMan.B.crypto)
+    .then(
+      function(sharedSecretKeysA) {
+        console.log('Shared secret keys A', sharedSecretKeysA);
+
+        exchange(cryptoB, middleMan.A.crypto)
+          .then(
+            function(sharedSecretKeysB) {
+              console.log('Shared secret keys B', sharedSecretKeysB);
+              disableControls(false);
+            },
+            console.error
+          );
+
+      },
+      console.error
+    );
 
   // Set behavior
-
   function setUpEvents(parties) {
     var i;
     for (i = 0; i < parties.length; i++) {
       parties[i].encrypt.onclick = encryptMessage.bind(this, parties[i]);
       parties[i].decrypt.onclick = decryptMessage.bind(this, parties[i]);
     }
-    parties[0].send.onclick = sendMessage.bind(this, parties[0], parties[1]);
-    parties[1].send.onclick = sendMessage.bind(this, parties[1], parties[0]);
+    parties[0].send.onclick = sendMessageMiddleMan.bind(this, parties[0], parties[1]);
+    parties[1].send.onclick = sendMessageMiddleMan.bind(this, parties[1], parties[0]);
   }
 
   function encryptMessage(party, evt) {
@@ -151,11 +173,23 @@
     );
   }
 
-  function sendMessage(fromParty, toParty, evt) {
-    toParty.decryptedInbox.value = '';
-    toParty.encryptedInbox.value = fromParty.encryptedOutbox.value;
-    toParty.encryptedInboxIv.value = fromParty.encryptedOutboxIv.value;
-    toParty.receivedData = fromParty.sendData;
+  function sendMessageMiddleMan(fromParty, toParty, evt) {    
+    
+    fromParty.middleMan.decrypt(fromParty.sendData.data, fromParty.sendData.iv).then(
+      function(decryptedData) {
+        console.log('Middle man decrypted data!!!', decryptedData);
+        addMessage('MIDDLE MAN DECRYPTED MESSAGE: ' + decryptedData);
+        toParty.middleMan.encrypt(decryptedData).then(
+          function(middleEncryptedData) {
+            toParty.receivedData = middleEncryptedData;            
+            toParty.encryptedInbox.value = join(middleEncryptedData.data, ',');
+            toParty.encryptedInboxIv.value = join(middleEncryptedData.iv, ',');
+            toParty.decryptedInbox.value = '';
+          }
+        );
+      }
+    );
+
   }
 
   function decryptMessage(party, evt) {

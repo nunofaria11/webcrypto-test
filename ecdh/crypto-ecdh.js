@@ -10,7 +10,8 @@
   }
 
   // Crypto type
-  function Crypto() {
+  function Crypto(id) {
+    this.id = id || (Date.now() + '');
     this.generateKeysAlgorithm = null;
     this.encryptAlgorithmIdentifier = null;
     this.privateKey = null;
@@ -19,6 +20,7 @@
   }
 
   // Properties
+  Crypto.prototype.id = null;
   Crypto.prototype.generateKeysAlgorithm = null;
   Crypto.prototype.encryptAlgorithmIdentifier = null;
   Crypto.prototype.privateKey = null;
@@ -85,7 +87,7 @@
           'jwk',
           publicKeyData,
           this.generateKeysAlgorithm,
-          false, []
+          true, []
         ).then(
 
           function(publicKey) {
@@ -103,7 +105,11 @@
 
                 function(sharedSecretKey) {
                   this.sharedSecretKey = sharedSecretKey;
-                  resolve(sharedSecretKey);
+                  //resolve(sharedSecretKey);
+                  return crypto.subtle.exportKey('jwk', sharedSecretKey).then(
+                    resolve, reject
+                  );
+
                 }.bind(this),
 
                 function(error) {
@@ -113,10 +119,7 @@
           }.bind(this)
 
         );
-      }.bind(this),
-      function(err) {
-        reject(err)
-      }
+      }.bind(this)
     );
   };
 
