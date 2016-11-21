@@ -3,8 +3,8 @@
 
 <head>
   <title>Crypto test - RSA-OAEP</title>
-  <script src="promise.min.js"></script>
-  <script src="crypto.js"></script>
+  <script src="../promise.min.js"></script>
+  <script src="crypto-rsa-oaep.js"></script>
 </head>
 
 <body>
@@ -64,8 +64,8 @@
   <script type="text/javascript">
   var algorithm = 'RSA-OAEP';
   var hash = 'SHA-256';
-  var cryptoA = new Crypto();
-  var cryptoB = new Crypto();
+  var cryptoA = new RSAOAEPCrypto();
+  var cryptoB = new RSAOAEPCrypto();
 
   var partyA = {
     desig: 'A',

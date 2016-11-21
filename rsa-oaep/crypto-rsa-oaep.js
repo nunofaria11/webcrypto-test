@@ -151,7 +151,7 @@
   };
 
   // Global export
-  global.Crypto = Crypto;
+  global.RSAOAEPCrypto = Crypto;
 
   // Private scope functions
   function convertStringToArrayBufferView(str) {
