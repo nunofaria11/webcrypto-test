@@ -139,7 +139,7 @@
           function(result) {
             resolve({
               data: new Uint8Array(result),
-              iv: convertArrayBufferViewtoString(iv)
+              iv: iv
             });
           },
           function(error) {
@@ -154,7 +154,7 @@
 
       crypto.subtle.decrypt({
           name: this.encryptAlgorithmIdentifier.name,
-          iv: convertStringToArrayBufferView(iv)
+          iv: iv
         },
         // Use shared secret to decrypt
         this.sharedSecretKey,

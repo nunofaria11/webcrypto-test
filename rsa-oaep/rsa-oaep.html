@@ -8,7 +8,7 @@
 </head>
 
 <body>
-  <h1>RSA-OAEP / SHA-256</h1>
+  <title>RSA-OAEP / SHA-256</title>
   <div id="contentA" border="2px">
     A outbox:
     <br>
@@ -152,6 +152,7 @@
     party.crypto.encrypt(party.decryptedOutbox.value).then(
       function(encData) {
         party.encryptedOutbox.value = join(encData, ',');
+        //party.encryptedOutbox.value = btoa(encData);
       },
       function(error) {
         addPartyMessage(party, 'Error encrypting data.');
