@@ -2,13 +2,13 @@
 <html>
 
 <head>
-  <title>Crypto test - RSA-OAEP</title>
-  <script src="promise.min.js"></script>
-  <script src="crypto.js"></script>
+  <title>Crypto test - Elliptic Curve Diffie-Hellman / AES-CBC</title>
+  <script src="../promise.min.js"></script>
+  <script src="crypto-ecdh.js"></script>
 </head>
 
 <body>
-  <h1>RSA-OAEP / SHA-256</h1>
+  <h1>Elliptic Curve Diffie-Hellman / AES-CBC</h1>
   <div id="contentA" border="2px">
     A outbox:
     <br>
@@ -19,6 +19,7 @@
     <br> A-Encryped outbox:
     <br>
     <textarea id="encryptedOutboxA" disabled="true"></textarea>
+    <textarea id="encryptedOutboxIvA" disabled="true"></textarea>
     <br>
     <button id="sendA">Send to B</button>
     <br>
@@ -27,6 +28,7 @@
     A inbox:
     <br>
     <textarea id="encryptedInboxA" disabled="true"></textarea>
+    <textarea id="encryptedInboxIvA" disabled="true"></textarea>
     <br>
     <button id="decryptA">Decrypt A</button>
     <br>
@@ -45,6 +47,7 @@
     <br> B-Encrypted outbox:
     <br>
     <textarea id="encryptedOutboxB" disabled="true"></textarea>
+    <textarea id="encryptedOutboxIvB" disabled="true"></textarea>
     <br>
     <button id="sendB">Send to A</button>
     <br>
@@ -53,6 +56,7 @@
     B inbox:
     <br>
     <textarea id="encryptedInboxB" disabled="true"></textarea>
+    <textarea id="encryptedInboxIvB" disabled="true"></textarea>
     <br>
     <button id="decryptB">Decrypt B</button>
     <br>
@@ -62,16 +66,16 @@
   </div>
   <ul id="messages"></ul>
   <script type="text/javascript">
-  var algorithm = 'RSA-OAEP';
-  var hash = 'SHA-256';
-  var cryptoA = new Crypto();
-  var cryptoB = new Crypto();
+  var cryptoA = new ECDHCrypto();
+  var cryptoB = new ECDHCrypto();
 
   var partyA = {
     desig: 'A',
     decryptedOutbox: document.getElementById('decryptedOutboxA'),
     encryptedOutbox: document.getElementById('encryptedOutboxA'),
+    encryptedOutboxIv: document.getElementById('encryptedOutboxIvA'),
     encryptedInbox: document.getElementById('encryptedInboxA'),
+    encryptedInboxIv: document.getElementById('encryptedInboxIvA'),
     decryptedInbox: document.getElementById('decryptedInboxA'),
     encrypt: document.getElementById('encryptA'),
     decrypt: document.getElementById('decryptA'),
@@ -83,7 +87,9 @@
     desig: 'B',
     decryptedOutbox: document.getElementById('decryptedOutboxB'),
     encryptedOutbox: document.getElementById('encryptedOutboxB'),
+    encryptedOutboxIv: document.getElementById('encryptedOutboxIvB'),
     encryptedInbox: document.getElementById('encryptedInboxB'),
+    encryptedInboxIv: document.getElementById('encryptedInboxIvB'),
     decryptedInbox: document.getElementById('decryptedInboxB'),
     encrypt: document.getElementById('encryptB'),
     decrypt: document.getElementById('decryptB'),
@@ -96,34 +102,46 @@
   // Set all controls disabled=true
   disableControls(true);
 
-  // Setup
-  cryptoA.init(algorithm, hash).then(
+  // Setup (key exchange)
+  cryptoA.init().then(
     // Success
     function(pubA) {
       console.log('A-init.', pubA);
-      cryptoB.init(algorithm, hash).then(
+      addPartyMessage(partyA ,'pubKey generated');
+      cryptoB.init().then(
         // Success
         function(pubB) {
           console.log('B-init.', pubB);
+          addPartyMessage(partyB ,'pubKey generated');
           // Public key exchange
-          cryptoA.setExternalPublicKey(pubB).then(
-            function(pk) {
-              console.log('A successfully imported public-key from B', pk);
+          addPartyMessage(partyB ,'pubKey shared with A');
+          var promiseA = cryptoA.deriveSharedSecret(pubB).then(
+            function(sharedSecretKey) {
+              console.log('A successfully generated shared-secret from B', sharedSecretKey);
+              addPartyMessage(partyA ,'Shared secret derived from B pubKey');
             },
             function(e) {
-              console.error('A - Error importing public-key prom B', e || '?');
+              console.error('A - Error generating shared-secret from B', e || '?');
             }
           );
-          cryptoB.setExternalPublicKey(pubA).then(
-            function(pk) {
-              console.log('B successfully imported public-key from A', pk);
+          addPartyMessage(partyA ,'pubKey shared with B');
+          var promiseB = cryptoB.deriveSharedSecret(pubA).then(
+            function(sharedSecretKey) {
+              console.log('B successfully generated shared-secret from A', sharedSecretKey);
+              addPartyMessage(partyB ,'Shared secret derived from A pubKey');
             },
             function(e) {
-              console.error('B - Error importing public-key prom A', e || '?');
+              console.error('B - Error generating shared-secret from A', e || '?');
             }
           );
-          // Set all controls disabled=false
-          disableControls(false);
+
+          Promise.all([promiseA, promiseB]).then(
+            function() {
+              // Set all controls disabled=false
+              disableControls(false);
+            }
+          );
+
         },
         // Erro
         onInitError.bind(this, 'B')
@@ -149,7 +167,10 @@
     party.encryptedOutbox.value = '';
     party.crypto.encrypt(party.decryptedOutbox.value).then(
       function(encData) {
-        party.encryptedOutbox.value = join(encData, ',');
+        party.sendData = encData;
+        //party.encryptedOutbox.value = join(encData, ',');
+        party.encryptedOutbox.value = btoa(party.sendData.data);        
+        party.encryptedOutboxIv.value = party.sendData.iv;
       },
       function(error) {
         addPartyMessage(party, 'Error encrypting data.');
@@ -161,12 +182,14 @@
   function sendMessage(fromParty, toParty, evt) {
     toParty.decryptedInbox.value = '';
     toParty.encryptedInbox.value = fromParty.encryptedOutbox.value;
+    toParty.encryptedInboxIv.value = fromParty.sendData.iv;
+    toParty.receivedData = fromParty.sendData;
   }
 
   function decryptMessage(party, evt) {
-    var valueToDecrypt = convertTextareaValueToArrayBufferView(party.encryptedInbox.value);
+    var valueToDecrypt = convertTextareaValueToArrayBufferView(atob(party.encryptedInbox.value));
     party.decryptedInbox.value = '';
-    party.crypto.decrypt(valueToDecrypt).then(
+    party.crypto.decrypt(valueToDecrypt, party.receivedData.iv).then(
       function(decData) {
         party.decryptedInbox.value = decData;
       },
