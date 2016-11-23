@@ -5,7 +5,7 @@
 
   if (!crypto.subtle) {
     console.warn('window.crypto API is not supported!');
-    global.Crypto = null;
+    global.SharedSecretCrypto = null;
     return;
   }
 
@@ -60,10 +60,7 @@
 
   Crypto.prototype.sign = function (data) {
     return new Promise(function (resolve, reject) {
-      var signAlgorithm = {
-        name: this.signatureAlgorithm.name
-      };
-      crypto.subtle.sign(signAlgorithm, this.signaturePrivateKey, convertStringToArrayBufferView(data))
+      crypto.subtle.sign(this.signatureAlgorithm, this.signaturePrivateKey, convertStringToArrayBufferView(data))
         .then(
           function (signature) {
             resolve(new Uint8Array(signature));
@@ -77,13 +74,7 @@
   Crypto.prototype.importVerifyPublicKey = function (publicKeyData) {
 
     return new Promise(function (resolve, reject) {
-      var importAlgorithm = {
-        name: this.signatureAlgorithm.name,
-        hash: {
-          name: this.signatureAlgorithm.hash.name
-        }
-      };
-      crypto.subtle.importKey('jwk', publicKeyData, importAlgorithm, false, ['verify'])
+      crypto.subtle.importKey('jwk', publicKeyData, this.signatureAlgorithm, false, ['verify'])
         .then(
           function (signPublicKey) {
             this.signatureVerifyPublicKey = signPublicKey;
@@ -97,7 +88,7 @@
   Crypto.prototype.verify = function (signature, data) {
     return new Promise(
       function (resolve, reject) {
-        crypto.subtle.verify({name: this.signatureAlgorithm.name}, this.signatureVerifyPublicKey, signature,
+        crypto.subtle.verify(this.signatureAlgorithm, this.signatureVerifyPublicKey, signature,
           convertStringToArrayBufferView(data)
         )
           .then(
