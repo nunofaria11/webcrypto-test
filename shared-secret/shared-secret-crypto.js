@@ -161,7 +161,10 @@
           function (wrapped) {
             resolve(new Uint8Array(wrapped));
           }.bind(this),
-          reject
+          function (err) {
+            console.error('Error ', err);
+            reject(err);
+          }
         );
     }.bind(this));
   };
