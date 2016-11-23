@@ -43,7 +43,7 @@
   Crypto.prototype.generateSignatureKeys = function () {
 
     return new Promise(function (resolve, reject) {
-      crypto.subtle.generateKey(this.signatureAlgorithm, false, ["sign", "verify"])
+      crypto.subtle.generateKey(this.signatureAlgorithm, true, ["sign", "verify"])
         .then(
           function (key) {
             this.signaturePrivateKey = key.privateKey;
@@ -263,7 +263,7 @@
       modulusLength: 2048,
       publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
       hash: {
-        name: 'SHA-1'
+        name: 'SHA-256'
       }
     };
 
