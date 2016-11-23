@@ -112,7 +112,7 @@
   Crypto.prototype.generateWrapUnwrapKeys = function () {
 
     return new Promise(function (resolve, reject) {
-      crypto.subtle.generateKey(this.wrapUnwrapAlgorithm, false, ['wrapKey', 'unwrapKey']).then(
+      crypto.subtle.generateKey(this.wrapUnwrapAlgorithm, true, ['wrapKey', 'unwrapKey']).then(
         function (keys) {
           this.wrapUnwrapPrivateKey = keys.privateKey;
           this.wrapUnwrapPublicKey = keys.publicKey;
