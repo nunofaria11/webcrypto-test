@@ -125,7 +125,11 @@
         }.bind(this));
     };
 
-    Crypto.prototype.importExternalWrapPublicKey = function (publicKeyData) {
+    Crypto.prototype.importExternalWrapPublicKey = function (publicKeyData, options) {
+        options = options || {};
+        var internalOptions = {
+            format: options.format || 'jwk'
+        };
         return new Promise(function (resolve, reject) {
             var importAlgorithm = {
                 name: this.wrapUnwrapAlgorithm.name,
@@ -133,7 +137,7 @@
                     name: this.wrapUnwrapAlgorithm.hash.name
                 }
             };
-            crypto.subtle.importKey('jwk', publicKeyData, importAlgorithm, true, ['wrapKey']
+            crypto.subtle.importKey(internalOptions.format, publicKeyData, importAlgorithm, true, ['wrapKey']
             ).then(
                 function (publicKey) {
                     this.externalWrapPublicKey = publicKey;
@@ -286,23 +290,5 @@
 
     // Global export
     global.SharedSecretCrypto = Crypto;
-
-    // Private scope functions
-    function str2ab(str) {
-        var arrBuff = new ArrayBuffer(str.length);
-        var bytes = new Uint8Array(arrBuff);
-        for (var iii = 0; iii < str.length; iii++) {
-            bytes[iii] = str.charCodeAt(iii);
-        }
-        return bytes;
-    }
-
-    function ab2str(buffer) {
-        var str = "";
-        for (var iii = 0; iii < buffer.byteLength; iii++) {
-            str += String.fromCharCode(buffer[iii]);
-        }
-        return str;
-    }
 
 })(window);
